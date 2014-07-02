@@ -50,18 +50,6 @@ void flashprint (const char p[]);
 
 
 uint16_t spi_transaction (uint8_t a, uint8_t b, uint8_t c, uint8_t d);
-image_t *findImage (uint16_t signature);
-
-
-uint16_t readSignature (void);
-boolean programFuses (const byte *fuses);
-void eraseChip(void);
-boolean verifyImage (byte *hextext);
-void busyWait(void);
-boolean flashPage (byte *pagebuff, uint16_t pageaddr, uint8_t pagesize);
-byte hexton (byte h);
-byte * readImagePage (byte *hextext, uint16_t pageaddr, uint8_t pagesize, byte *page);
-boolean verifyFuses (const byte *fuses, const byte *fusemask);
 void error(char *string);
 
 #endif

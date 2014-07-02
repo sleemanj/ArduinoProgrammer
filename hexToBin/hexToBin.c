@@ -9,6 +9,16 @@
 
 #define MAX_LINE 256
 
+typedef struct
+{
+  uint8_t length;
+  uint16_t address;
+  uint8_t type;
+  uint8_t checksum;
+  uint8_t data[255];
+} HEX_DATA;
+
+
 long fileSize(FILE *f)
 {
   long startingPos = ftell(f);
@@ -150,9 +160,9 @@ int main(int argc, char *argv[])
   }
 
   printf("#if ARDUINO >= 100\n");
-  printf("#include \"Arduino.h\"\n");
+  printf(" #include \"Arduino.h\"\n");
   printf("#else\n");
-  printf("#include \"WProgram.h\"\n");
+  printf(" #include \"WProgram.h\"\n");
   printf("#endif\n");
   printf("#include <avr/pgmspace.h>\n");
   printf("#include <stdint.h>\n");
@@ -169,19 +179,55 @@ int main(int argc, char *argv[])
     printf("};\n");
   }
 
-  printf("\nHEX_PTR PROGMEM hexData[] =\n{\n");
+  printf("\nHEX_IMAGE PROGMEM hexImage =\n{\n");
+  printf("  \"%s\",        // image_name\n", argv[1]);
+  printf("  \"atmega328p\",           // image_chipname\n");
+  printf("  0x950F,                 // image_chipsig for 328P\n");
+  printf("  {0x3F, 0xFF, 0xDA, 0x05},            // pre program fuses (prot/lock, low, high, ext)\n");
+  printf("  {0x0F, 0x00, 0x00, 0x00},            // post program fuses. These are the\n");
+  printf("                                       // default settings from the adaFruit\n");
+  printf("                                       // project. With these settings, the\n");
+  printf("                                       // target processor may be programmed\n");
+  printf("                                       // through the arduino IDE as a\n");
+  printf("                                       // \"Arduino Pro or Pro Mini (3.3V,\n");
+  printf("                                       // 8MHz) w/ ATmega328\".\n");
+  printf("  {0x3F, 0xFF, 0xFF, 0x07},  // fuse mask\n");
+  printf("  32768,                     // size of chip flash in bytes\n");
+  printf("  128,                       // size in bytes of flash page\n");
+  printf("  %d,                        // number of entries in the hexLine array\n", lineCount);
+  printf("  {\n");
 
   for (n=0; n < lineCount; n++)
   {
     if (n) printf(",\n");
 
-    printf("  {0x%02X, 0x%04X, 0x%02X, 0x%02X, __hexLineData_%d__",
+    printf("    {0x%02X, 0x%04X, 0x%02X, 0x%02X, __hexLineData_%d__}",
            hexData[n].length, hexData[n].address, hexData[n].type, hexData[n].checksum, n);
-
-    printf("}");
   }
 
-  printf("\n};\n\n");
+  printf("\n");
+  printf("  }\n");
+  printf("};\n\n");
+
+  printf("HEX_IMAGE *hexImages[] = {\n");
+  printf(" &hexImage,\n");
+  printf("};\n");
+
+  printf("uint8_t NUM_HEX_IMAGES = sizeof(hexImages)/sizeof(hexImages[0]);\n");
+  printf("int imageSize()\n");
+  printf("{\n");
+  printf("  return(0);\n");
+//  printf("  return(sizeof(image_328));\n");
+  printf("}\n\n");
+  printf("int binSize()\n");
+  printf("{\n");
+  printf("  int sz = sizeof(hexImage);\n");
+  for (n=0; n < lineCount; n++)
+  {
+    printf("  sz += sizeof(__hexLineData_%d__);\n", n);
+  }
+  printf("  return(sz);\n");
+  printf("}\n");
   return 0;
 }
 

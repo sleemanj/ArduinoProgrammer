@@ -23,6 +23,7 @@
 
 #include "optiLoader.h"
 #include "SPI.h"
+#include "code.h"
 
 // Global Variables
 int pmode=0;
@@ -63,7 +64,12 @@ void setup () {
   // OC1A output, fast PWM
   TCCR1A = _BV(WGM11) | _BV(COM1A1);
   TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS10); // no clock prescale
-  
+
+  char buf[32];
+  sprintf(buf, "sizeof(image_328): %d", imageSize());
+  Serial.println(buf);
+  sprintf(buf, "sizeof(binary): %d", binSize());
+  Serial.println(buf);
 }
 
 void loop (void) {
@@ -76,7 +82,7 @@ void loop (void) {
   target_poweron();			/* Turn on target power */
 
   uint16_t signature;
-  image_t *targetimage;
+  HEX_IMAGE *targetimage;
         
   if (! (signature = readSignature()))		// Figure out what kind of CPU
     error("Signature fail");
@@ -95,36 +101,35 @@ void loop (void) {
   end_pmode();
   start_pmode();
 
-  byte *hextext = targetimage->image_hexcode;  
+  HEX_PTR *hexLine = targetimage->hexLine;  
   uint16_t pageaddr = 0;
   uint8_t pagesize = pgm_read_byte(&targetimage->image_pagesize);
   uint16_t chipsize = pgm_read_word(&targetimage->chipsize);
-        
+
   //Serial.println(chipsize, DEC);
   while (pageaddr < chipsize) {
-     byte *hextextpos = readImagePage (hextext, pageaddr, pagesize, pageBuffer);
-          
+     hexLine = readImagePage(hexLine, pageaddr, pagesize, pageBuffer);
+
      boolean blankpage = true;
      for (uint8_t i=0; i<pagesize; i++) {
        if (pageBuffer[i] != 0xFF) blankpage = false;
-     }          
+     }
      if (! blankpage) {
        if (! flashPage(pageBuffer, pageaddr, pagesize))	
-	 error("Flash programming failed");
+         error("Flash programming failed");
      }
-     hextext = hextextpos;
      pageaddr += pagesize;
   }
-  
+
   // Set fuses to 'final' state
   if (! programFuses(targetimage->image_normfuses))
     error("Programming Fuses fail");
-    
+
   end_pmode();
   start_pmode();
-  
+
   Serial.println("\nVerifing flash...");
-  if (! verifyImage(targetimage->image_hexcode) ) {
+  if (! verifyImage(targetimage->hexLine) ) {
     error("Failed to verify chip");
   } else {
     Serial.println("\tFlash verified correctly!");
@@ -211,6 +216,5 @@ boolean target_poweroff ()
 }
 
 
-
-
+// vi:syntax=cpp
 
