@@ -5,7 +5,13 @@ image_t PROGMEM image_328 = {
     {"atmega328"},
     0x950F,				/* Signature bytes for 328P */
     {0x3F, 0xFF, 0xDA, 0x05},            // pre program fuses (prot/lock, low, high, ext)
-    {0x0F, 0x0, 0x0, 0x0},            // post program fuses
+    {0x0F, 0x00, 0x00, 0x00},            // post program fuses. These are the
+                                         // default settings from the adaFruit
+                                         // project. With these settings, the
+                                         // target processor may be programmed
+                                         // through the arduino IDE as a
+                                         // "Arduino Pro or Pro Mini (3.3V,
+                                         // 8MHz) w/ ATmega328".
     {0x3F, 0xFF, 0xFF, 0x07},           // fuse mask
     32768,     // size of chip flash in bytes
     128,   // size in bytes of flash page
