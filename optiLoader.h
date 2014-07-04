@@ -22,24 +22,6 @@
 #define LED_ERR 8
 #define LED_PROGMODE A0
 
-typedef struct image {
-    char image_name[30];	       /* Ie "optiboot_diecimila.hex" */
-    char image_chipname[12];	       /* ie "atmega168" */
-    uint16_t image_chipsig;	       /* Low two bytes of signature */
-    byte image_progfuses[5];	       /* fuses to set during programming */
-    byte image_normfuses[5];	       /* fuses to set after programming */
-    byte fusemask[4];
-    uint16_t chipsize;
-    byte image_pagesize;	       /* page size for flash programming */
-    byte image_hexcode[19000];	       /* intel hex format image (text) */
-} image_t;
-
-typedef struct alias {
-  char image_chipname[12];
-  uint16_t image_chipsig;
-  image_t * alias_image;
-} alias_t;
-
 // Useful message printing definitions
 
 #define debug(string) // flashprint(PSTR(string));
