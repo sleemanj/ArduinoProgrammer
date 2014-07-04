@@ -26,7 +26,6 @@ typedef struct
   uint8_t fusemask[4];
   uint16_t chipsize;
   uint8_t image_pagesize;        /* page size for flash programming */
-  uint16_t numLines;             /* number of entries in hexLine array */
   HEX_PTR hexLine[];
 } HEX_IMAGE;
 

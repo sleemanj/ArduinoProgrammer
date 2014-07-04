@@ -29,7 +29,6 @@
 int pmode=0;
 byte pageBuffer[128];		       /* One page of flash */
 
-
 /*
  * Pins to target
  */
@@ -43,8 +42,10 @@ byte pageBuffer[128];		       /* One page of flash */
 #define PIEZOPIN A3
 
 void setup () {
-  Serial.begin(57600);			/* Initialize serial for status msgs */
+  Serial.begin(57600);  /* Initialize serial for status msgs */
+#if VERBOSE
   Serial.println("\nAdaBootLoader Bootstrap programmer (originally OptiLoader Bill Westfield (WestfW))");
+#endif
 
   pinMode(PIEZOPIN, OUTPUT);
 
@@ -55,7 +56,7 @@ void setup () {
 
   pinMode(BUTTON, INPUT);     // button for next programming
   digitalWrite(BUTTON, HIGH); // pullup
-  
+
   pinMode(CLOCK, OUTPUT);
   // setup high freq PWM on pin 9 (timer 1)
   // 50% duty cycle -> 8 MHz
@@ -64,12 +65,6 @@ void setup () {
   // OC1A output, fast PWM
   TCCR1A = _BV(WGM11) | _BV(COM1A1);
   TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS10); // no clock prescale
-
-  char buf[32];
-  sprintf(buf, "sizeof(image_328): %d", imageSize());
-  Serial.println(buf);
-  sprintf(buf, "sizeof(binary): %d", binSize());
-  Serial.println(buf);
 }
 
 void loop (void) {
@@ -128,18 +123,15 @@ void loop (void) {
   end_pmode();
   start_pmode();
 
-  Serial.println("\nVerifing flash...");
+  Serial.println("\nVerifing flash");
   if (! verifyImage(targetimage->hexLine) ) {
     error("Failed to verify chip");
-  } else {
-    Serial.println("\tFlash verified correctly!");
   }
 
   if (! verifyFuses(targetimage->image_normfuses, targetimage->fusemask) ) {
     error("Failed to verify fuses");
-  } else {
-    Serial.println("Fuses verified correctly!");
   }
+  
   target_poweroff();
   tone(PIEZOPIN, 4000, 200);
 }

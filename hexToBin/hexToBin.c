@@ -194,7 +194,6 @@ int main(int argc, char *argv[])
   printf("  {0x3F, 0xFF, 0xFF, 0x07},  // fuse mask\n");
   printf("  32768,                     // size of chip flash in bytes\n");
   printf("  128,                       // size in bytes of flash page\n");
-  printf("  %d,                        // number of entries in the hexLine array\n", lineCount);
   printf("  {\n");
 
   for (n=0; n < lineCount; n++)
@@ -214,20 +213,6 @@ int main(int argc, char *argv[])
   printf("};\n");
 
   printf("uint8_t NUM_HEX_IMAGES = sizeof(hexImages)/sizeof(hexImages[0]);\n");
-  printf("int imageSize()\n");
-  printf("{\n");
-  printf("  return(0);\n");
-//  printf("  return(sizeof(image_328));\n");
-  printf("}\n\n");
-  printf("int binSize()\n");
-  printf("{\n");
-  printf("  int sz = sizeof(hexImage);\n");
-  for (n=0; n < lineCount; n++)
-  {
-    printf("  sz += sizeof(__hexLineData_%d__);\n", n);
-  }
-  printf("  return(sz);\n");
-  printf("}\n");
   return 0;
 }
 
