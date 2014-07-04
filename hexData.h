@@ -9,15 +9,6 @@ extern "C"
 
 typedef struct
 {
-  uint8_t length;
-  uint16_t address;
-  uint8_t type;
-  uint8_t checksum;
-  uint8_t *data;
-} HEX_PTR;
-
-typedef struct
-{
   char image_name[30];        /* Ie "optiboot_diecimila.hex" */
   char image_chipname[12];    /* ie "atmega168" */
   uint16_t image_chipsig;     /* Low two bytes of signature */
@@ -26,7 +17,9 @@ typedef struct
   uint8_t fusemask[4];
   uint16_t chipsize;
   uint8_t image_pagesize;        /* page size for flash programming */
-  HEX_PTR hexLine[];
+  uint16_t address;
+  uint16_t length;
+  uint8_t data[];
 } HEX_IMAGE;
 
 int imageSize();

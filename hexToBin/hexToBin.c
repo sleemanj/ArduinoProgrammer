@@ -55,6 +55,7 @@ int main(int argc, char *argv[])
   char digit[5];
   HEX_DATA *hexData;
   size_t lineLength;
+  size_t totalLength;
   FILE *f;
   unsigned long number;
   int i, j, n = 0, fileOffset = 0, lineCount = 0;
@@ -110,7 +111,7 @@ int main(int argc, char *argv[])
     }
 
     lineLength = strnlen(line, MAX_LINE);
-    
+
     if (lineLength < 11)
     {
       printf("ERROR: line too short to be valid.\n");
@@ -168,15 +169,10 @@ int main(int argc, char *argv[])
   printf("#include <stdint.h>\n");
   printf("#include \"hexData.h\"\n\n");
 
+  totalLength = 0;
   for (n=0; n < lineCount; n++)
   {
-    printf("uint8_t PROGMEM __hexLineData_%d__[] = {", n);
-    for (j=0; j < hexData[n].length; j++)
-    {
-      if (j) printf(", ");
-      printf("0x%02X", hexData[n].data[j]);
-    }
-    printf("};\n");
+    totalLength += hexData[n].length;
   }
 
   printf("\nHEX_IMAGE PROGMEM hexImage =\n{\n");
@@ -194,14 +190,17 @@ int main(int argc, char *argv[])
   printf("  {0x3F, 0xFF, 0xFF, 0x07},  // fuse mask\n");
   printf("  32768,                     // size of chip flash in bytes\n");
   printf("  128,                       // size in bytes of flash page\n");
-  printf("  {\n");
+  printf("  0x%04X,                    // image base address\n", hexData[0].address);
+  printf("  %ld,                        // image size\n", totalLength);
+  printf("  {\n    ");
 
   for (n=0; n < lineCount; n++)
   {
-    if (n) printf(",\n");
-
-    printf("    {0x%02X, 0x%04X, 0x%02X, 0x%02X, __hexLineData_%d__}",
-           hexData[n].length, hexData[n].address, hexData[n].type, hexData[n].checksum, n);
+    for (int i=0; i < hexData[n].length; i++)
+    {
+      if (i) printf(", "); else if (n) printf(",\n    ");
+      printf("0x%02X", hexData[n].data[i]);
+    }
   }
 
   printf("\n");

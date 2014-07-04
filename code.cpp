@@ -150,95 +150,27 @@ boolean verifyFuses (const byte *fuses, const byte *fusemask)
 */
 
 // Returns number of bytes decoded
-HEX_PTR * readImagePage (HEX_PTR *hexLines, uint16_t pageaddr, uint8_t pagesize, byte *page)
+void readImagePage(const HEX_IMAGE *image, uint16_t pageaddr, uint8_t pagesize, byte *page)
 {
-  boolean firstline = true;
-  uint16_t len;
-  uint8_t page_idx = 0;
-  HEX_PTR *beginning = hexLines;
-  int lineNum = 0;
-
-  byte b, cksum = 0;
+  uint16_t baseAddr = pgm_read_word(&image->address);
+  uint16_t len      = pgm_read_word(&image->length);;
+  uint8_t i;
 
   // 'empty' the page by filling it with 0xFF's
-  for (uint8_t i=0; i<pagesize; i++)
+  for (i=0; i < pagesize; i++)
     page[i] = 0xFF;
 
-  while (1) {
-    uint16_t lineaddr;
+  if ((pageaddr + pagesize) < baseAddr ||
+      (baseAddr + len) < pageaddr)
+    return;
 
-    len = pgm_read_byte(&hexLines[lineNum].length);
-    cksum = len;
-
-    lineaddr = pgm_read_word(&hexLines[lineNum].address);
-    cksum += lineaddr >> 8 & 0xFF;
-    cksum += lineaddr & 0xFF;
-
-    if (lineaddr >= (pageaddr + pagesize)) {
-      return beginning;
-    }
-
-    b = pgm_read_byte(&hexLines[lineNum].type);
-    cksum += b;
-
-    if (b == 0x1) { 
-     // end record!
-     break;
-    } 
-    if (b != 0) {
-      // We only care about 'data' records. Skip all others.
-      lineNum++;
-      continue;
-    }
-#if VERBOSE
-    Serial.print("\nLine address =  0x"); Serial.println(lineaddr, HEX);
-    Serial.print("Page address =  0x"); Serial.println(pageaddr, HEX);
-#endif
-
-    uint8_t *dataPtr = (uint8_t*)pgm_read_word(&hexLines[lineNum].data);
-
-    page_idx = lineaddr - pageaddr;
-
-    for (byte i=0; i < len; i++) {
-      // read 'n' bytes
-      b = pgm_read_byte(&dataPtr[i]);
-
-      cksum += b;
-#if VERBOSE
-      Serial.print(b, HEX);
-      Serial.write(' ');
-#endif
-
-      page[page_idx] = b;
-      page_idx++;
-
-      if (page_idx > pagesize) {
-          error("Too much code");
-          break;
-      }
-    }
-    b = pgm_read_byte(&hexLines[lineNum].checksum);  // chxsum
-    cksum += b;
-    if (cksum != 0) {
-      char buf[64];
-      sprintf(buf, "Bad checksum while reading page: %d", cksum);
-      error(buf);
-    }
-#if VERBOSE
-    Serial.println();
-    Serial.println(page_idx, DEC);
-#endif
-
-    lineNum++;
-
-    if (page_idx == pagesize) 
-      break;
+  uint16_t dataOffset = pageaddr - baseAddr;
+  for (i=0; i < pagesize; i++)
+  {
+    if ((dataOffset + i) > len) break;
+    page[i] = pgm_read_byte(&image->data[dataOffset + i]);
   }
-#if VERBOSE
-  Serial.print("\n  Total bytes read: ");
-  Serial.println(page_idx, DEC);
-#endif
-  return &hexLines[lineNum];
+  return;
 }
 
 
@@ -310,87 +242,26 @@ boolean flashPage (byte *pagebuff, uint16_t pageaddr, uint8_t pagesize) {
 // verifyImage does a byte-by-byte verify of the flash hex against the chip
 // Thankfully this does not have to be done by pages!
 // returns true if the image is the same as the hextext, returns false on any error
-boolean verifyImage (HEX_PTR *hexLines)  {
-  uint16_t address = 0;
-  uint16_t lineNum = 0;
+boolean verifyImage (const HEX_IMAGE *image)  {
+  uint16_t baseAddr = pgm_read_word(&image->address);
+  uint16_t len = pgm_read_word(&image->length);
 
   SPI.setClockDivider(CLOCKSPEED_FLASH); 
 
-  uint16_t len;
-  byte b, cksum = 0;
+  for (uint16_t i=0; i < len; i++)
+  {
+    uint8_t b = pgm_read_word(&image->data[i]);
+    uint16_t addr = baseAddr + i;
 
-  while (1) {
-    uint16_t lineaddr;
-
-    len = pgm_read_byte(&hexLines[lineNum].length);
-    cksum = len;
-
-    lineaddr = pgm_read_word(&hexLines[lineNum].address); // address
-    cksum += lineaddr >> 8 & 0xFF;
-    cksum += lineaddr & 0xFF;
-
-    b = pgm_read_byte(&hexLines[lineNum].type); // record type
-    cksum += b;
-
-    //Serial.print("Record type "); Serial.println(b, HEX);
-    if (b == 0x1) { 
-     // end record!
-     break;
-    } 
-    if (b != 0) {
-      // We only care about 'data' records. Skip all others.
-      lineNum++;
-      continue;
-    }
-
-    uint8_t *dataPtr = (uint8_t*)pgm_read_word(&hexLines[lineNum].data);
-
-    for (byte i=0; i < len; i++) {
-      // read 'n' bytes
-      b = pgm_read_byte(&dataPtr[i]);
-      cksum += b;
-
+    if (b != (spi_transaction(0x20 + 8 * (addr % 2), addr >> 9, addr >> 1, 0) & 0xFF))
+    {
 #if VERBOSE
-      Serial.print("$");
-      Serial.print(lineaddr, HEX);
-      Serial.print(":0x");
-      Serial.print(b, HEX);
-      Serial.write(" ? ");
+        Serial.print("verification error at address 0x"); Serial.print(addr, HEX);
+        Serial.print(" Should be 0x"); Serial.print(b, HEX); Serial.print(" not 0x");
+        Serial.println((spi_transaction(0x20 + 8 * (addr % 2), addr >> 9, addr >> 1, 0) & 0xFF), HEX);
 #endif
-
-      // verify this byte!
-      if (lineaddr % 2) {
-        // for 'high' bytes:
-        if (b != (spi_transaction(0x28, lineaddr >> 9, lineaddr >> 1, 0) & 0xFF)) {
-#if VERBOSE
-          Serial.print("verification error at address 0x"); Serial.print(lineaddr, HEX);
-          Serial.print(" Should be 0x"); Serial.print(b, HEX); Serial.print(" not 0x");
-          Serial.println((spi_transaction(0x28, lineaddr >> 9, lineaddr >> 1, 0) & 0xFF), HEX);
-#endif
-          return false;
-        }
-      } else {
-        // for 'low bytes'
-        if (b != (spi_transaction(0x20, lineaddr >> 9, lineaddr >> 1, 0) & 0xFF)) {
-#if VERBOSE
-          Serial.print("verification error at address 0x"); Serial.print(lineaddr, HEX);
-          Serial.print(" Should be 0x"); Serial.print(b, HEX); Serial.print(" not 0x");
-          Serial.println((spi_transaction(0x20, lineaddr >> 9, lineaddr >> 1, 0) & 0xFF), HEX);
-#endif
-          return false;
-        }
-      }
-      lineaddr++;
+       return(false);
     }
-
-    b = pgm_read_byte(&hexLines[lineNum].checksum);  // chxsum
-    cksum += b;
-    if (cksum != 0) {
-      error("Bad checksum: ");
-      Serial.print(cksum, HEX);
-      return false;
-    }
-    lineNum++;
   }
   return true;
 }
@@ -400,8 +271,8 @@ boolean verifyImage (HEX_PTR *hexLines)  {
 
 void eraseChip(void) {
   SPI.setClockDivider(CLOCKSPEED_FUSES); 
-    
-  spi_transaction(0xAC, 0x80, 0, 0);	// chip erase    
+
+  spi_transaction(0xAC, 0x80, 0, 0);
   busyWait();
 }
 

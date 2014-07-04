@@ -96,14 +96,13 @@ void loop (void) {
   end_pmode();
   start_pmode();
 
-  HEX_PTR *hexLine = targetimage->hexLine;  
   uint16_t pageaddr = 0;
   uint8_t pagesize = pgm_read_byte(&targetimage->image_pagesize);
   uint16_t chipsize = pgm_read_word(&targetimage->chipsize);
 
   //Serial.println(chipsize, DEC);
   while (pageaddr < chipsize) {
-     hexLine = readImagePage(hexLine, pageaddr, pagesize, pageBuffer);
+     readImagePage(targetimage, pageaddr, pagesize, pageBuffer);
 
      boolean blankpage = true;
      for (uint8_t i=0; i<pagesize; i++) {
@@ -124,7 +123,7 @@ void loop (void) {
   start_pmode();
 
   Serial.println("\nVerifing flash");
-  if (! verifyImage(targetimage->hexLine) ) {
+  if (! verifyImage(targetimage) ) {
     error("Failed to verify chip");
   }
 
