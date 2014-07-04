@@ -78,22 +78,22 @@ void loop (void) {
     if  ((! digitalRead(BUTTON)) || (Serial.read() == 'G'))
       break;  
   }
-    
-  target_poweron();			/* Turn on target power */
+
+  target_poweron();
 
   uint16_t signature;
   HEX_IMAGE *targetimage;
-        
-  if (! (signature = readSignature()))		// Figure out what kind of CPU
+
+  if (! (signature = readSignature()))  // Figure out what kind of CPU
     error("Signature fail");
-  if (! (targetimage = findImage(signature)))	// look for an image
+  if (! (targetimage = findImage(signature)))
     error("Image fail");
-  
+
   eraseChip();
 
-  if (! programFuses(targetimage->image_progfuses))	// get fuses ready to program
+  if (! programFuses(targetimage->image_progfuses)) // get fuses ready to program
     error("Programming Fuses fail");
-  
+
   if (! verifyFuses(targetimage->image_progfuses, targetimage->fusemask) ) {
     error("Failed to verify fuses");
   } 
@@ -115,7 +115,7 @@ void loop (void) {
        if (pageBuffer[i] != 0xFF) blankpage = false;
      }
      if (! blankpage) {
-       if (! flashPage(pageBuffer, pageaddr, pagesize))	
+       if (! flashPage(pageBuffer, pageaddr, pagesize))
          error("Flash programming failed");
      }
      pageaddr += pagesize;
@@ -140,7 +140,7 @@ void loop (void) {
   } else {
     Serial.println("Fuses verified correctly!");
   }
-  target_poweroff();			/* turn power off */
+  target_poweroff();
   tone(PIEZOPIN, 4000, 200);
 }
 
@@ -154,6 +154,28 @@ void error(char *string) {
   }
 }
 
+/*
+
+From datasheet...
+
+Power-up sequence:
+
+1. Apply power between VCC and GND while RESET and SCK are set to “0”. In
+   some systems, the programmer can not guarantee that SCK is held low
+   during power-up. In this case, RESET must be given a positive pulse of
+   at least two CPU clock cycles duration after SCK has been set to “0”.
+
+2. Wait for at least 20ms and enable serial programming by sending the
+   Programming Enable serial instruction to pin MOSI.
+
+3. The serial programming instructions will not work if the communication
+   is out of synchronization. When in sync. the second byte (0x53), will
+   echo back when issuing the third byte of the Programming Enable
+   instruction. Whether the echo is correct or not, all four bytes of the
+   instruction must be transmitted. If the 0x53 did not echo back, give RESET
+   a positive pulse and issue a new Programming Enable command.
+*/
+
 void start_pmode () {
   pinMode(13, INPUT); // restore to default
 
@@ -163,9 +185,10 @@ void start_pmode () {
   debug("...spi_init done");
   // following delays may not work on all targets...
   pinMode(RESET, OUTPUT);
-  digitalWrite(RESET, HIGH);
   pinMode(SCK, OUTPUT);
+  digitalWrite(RESET, LOW);
   digitalWrite(SCK, LOW);
+  digitalWrite(RESET, HIGH);
   delay(50);
   digitalWrite(RESET, LOW);
   delay(50);

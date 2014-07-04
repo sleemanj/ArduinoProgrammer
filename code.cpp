@@ -197,12 +197,19 @@ HEX_PTR * readImagePage (HEX_PTR *hexLines, uint16_t pageaddr, uint8_t pagesize,
      // end record!
      break;
     } 
+    if (b != 0) {
+      // We only care about 'data' records. Skip all others.
+      lineNum++;
+      continue;
+    }
 #if VERBOSE
-    Serial.print("\nLine address =  0x"); Serial.println(lineaddr, HEX);      
-    Serial.print("Page address =  0x"); Serial.println(pageaddr, HEX);      
+    Serial.print("\nLine address =  0x"); Serial.println(lineaddr, HEX);
+    Serial.print("Page address =  0x"); Serial.println(pageaddr, HEX);
 #endif
 
     uint8_t *dataPtr = (uint8_t*)pgm_read_word(&hexLines[lineNum].data);
+
+    page_idx = lineaddr - pageaddr;
 
     for (byte i=0; i < len; i++) {
       // read 'n' bytes
@@ -246,6 +253,7 @@ HEX_PTR * readImagePage (HEX_PTR *hexLines, uint16_t pageaddr, uint8_t pagesize,
   return &hexLines[lineNum];
 }
 
+
 // Send one byte to the page buffer on the chip
 void flashWord (uint8_t hilo, uint16_t addr, uint8_t data) {
 #if VERBOSE
@@ -255,7 +263,23 @@ void flashWord (uint8_t hilo, uint16_t addr, uint8_t data) {
 #else
   spi_transaction(0x40+8*hilo, addr>>8 & 0xFF, addr & 0xFF, data);
 #endif
+
+  busyWait();
 }
+
+/*
+  From the datasheet...
+  The Flash is programmed one page at a time. The memory page is loaded one
+  byte at a time by supplying the 6 LSB of the address and data together with
+  the Load Program Memory Page instruction. To ensure correct loading of the
+  page, the data low byte must be loaded before data high byte is applied for
+  a given address. The Program Memory Page is stored by loading the Write
+  Program Memory Page instruction with the 7 MSB of the address. If polling
+  (RDY/BSY) is not used, the user must wait at least tWD_FLASH before issuing
+  the next page (See Table 28-18). Accessing the serial programming interface
+  before the Flash write operation completes can result in incorrect
+  programming.
+*/
 
 // Basically, write the pagebuff (with pagesize bytes in it) into page $pageaddr
 boolean flashPage (byte *pagebuff, uint16_t pageaddr, uint8_t pagesize) {  
@@ -264,7 +288,7 @@ boolean flashPage (byte *pagebuff, uint16_t pageaddr, uint8_t pagesize) {
 
   Serial.print("Flashing page "); Serial.println(pageaddr, HEX);
   for (uint16_t i=0; i < pagesize/2; i++) {
-    
+
 #if VERBOSE
     Serial.print(pagebuff[2*i], HEX); Serial.print(' ');
     Serial.print(pagebuff[2*i+1], HEX); Serial.print(' ');
@@ -276,17 +300,20 @@ boolean flashPage (byte *pagebuff, uint16_t pageaddr, uint8_t pagesize) {
   }
 
   // page addr is in bytes, byt we need to convert to words (/2)
-  pageaddr = (pageaddr/2) & 0xFFC0;
+  pageaddr = pageaddr / 2;
 
   uint16_t commitreply = spi_transaction(0x4C, (pageaddr >> 8) & 0xFF, pageaddr & 0xFF, 0);
 
   Serial.print("  Commit Page: 0x");  Serial.print(pageaddr, HEX);
   Serial.print(" -> 0x"); Serial.println(commitreply, HEX);
+
   if (commitreply != pageaddr) 
+  {
+    error("  Invalid commitreply!");
     return false;
+  }
 
   busyWait();
-
   return true;
 }
 
@@ -311,7 +338,6 @@ boolean verifyImage (HEX_PTR *hexLines)  {
     lineaddr = pgm_read_word(&hexLines[lineNum].address); // address
     cksum += lineaddr >> 8 & 0xFF;
     cksum += lineaddr & 0xFF;
-    Serial.println(lineaddr, HEX);
 
     b = pgm_read_byte(&hexLines[lineNum].type); // record type
     cksum += b;
@@ -321,8 +347,14 @@ boolean verifyImage (HEX_PTR *hexLines)  {
      // end record!
      break;
     } 
+    if (b != 0) {
+      // We only care about 'data' records. Skip all others.
+      lineNum++;
+      continue;
+    }
 
     uint8_t *dataPtr = (uint8_t*)pgm_read_word(&hexLines[lineNum].data);
+    uint16_t addr = lineaddr / 2; // addr is in words, so divide by 2
 
     for (byte i=0; i < len; i++) {
       // read 'n' bytes
@@ -340,18 +372,18 @@ boolean verifyImage (HEX_PTR *hexLines)  {
       // verify this byte!
       if (lineaddr % 2) {
         // for 'high' bytes:
-        if (b != (spi_transaction(0x28, lineaddr >> 9, lineaddr / 2, 0) & 0xFF)) {
+        if (b != (spi_transaction(0x28, addr >> 8, addr, 0) & 0xFF)) {
           Serial.print("verification error at address 0x"); Serial.print(lineaddr, HEX);
           Serial.print(" Should be 0x"); Serial.print(b, HEX); Serial.print(" not 0x");
-          Serial.println((spi_transaction(0x28, lineaddr >> 9, lineaddr / 2, 0) & 0xFF), HEX);
+          Serial.println((spi_transaction(0x28, addr >> 8, addr, 0) & 0xFF), HEX);
           return false;
         }
       } else {
         // for 'low bytes'
-        if (b != (spi_transaction(0x20, lineaddr >> 9, lineaddr / 2, 0) & 0xFF)) {
+        if (b != (spi_transaction(0x20, addr >> 8, addr, 0) & 0xFF)) {
           Serial.print("verification error at address 0x"); Serial.print(lineaddr, HEX);
           Serial.print(" Should be 0x"); Serial.print(b, HEX); Serial.print(" not 0x");
-          Serial.println((spi_transaction(0x20, lineaddr >> 9, lineaddr / 2, 0) & 0xFF), HEX);
+          Serial.println((spi_transaction(0x20, addr >> 8, addr, 0) & 0xFF), HEX);
           return false;
         }
       } 
