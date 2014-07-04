@@ -19,14 +19,14 @@
 uint16_t readSignature (void)
 {
   SPI.setClockDivider(CLOCKSPEED_FUSES); 
-    
+
   uint16_t target_type = 0;
   Serial.print("\nReading signature:");
-  
+
   target_type = spi_transaction(0x30, 0x00, 0x01, 0x00);
   target_type <<= 8;
   target_type |= spi_transaction(0x30, 0x00, 0x02, 0x00);
-  
+
   Serial.println(target_type, HEX);
   if (target_type == 0 || target_type == 0xFFFF) {
     if (target_type == 0) {
@@ -52,13 +52,12 @@ HEX_IMAGE *findImage (uint16_t signature)
     ip = hexImages[i];
 
     if (ip && (pgm_read_word(&ip->image_chipsig) == signature)) {
-	Serial.print("  Found \"");
-	flashprint(&ip->image_name[0]);
-	Serial.print("\" for ");
-	flashprint(&ip->image_chipname[0]);
-	Serial.println();
-
-	return ip;
+      Serial.print("  Found \"");
+      flashprint(&ip->image_name[0]);
+      Serial.print("\" for ");
+      flashprint(&ip->image_chipname[0]);
+      Serial.println();
+      return ip;
     }
   }
   Serial.println(" Not Found");
@@ -354,7 +353,6 @@ boolean verifyImage (HEX_PTR *hexLines)  {
     }
 
     uint8_t *dataPtr = (uint8_t*)pgm_read_word(&hexLines[lineNum].data);
-    uint16_t addr = lineaddr / 2; // addr is in words, so divide by 2
 
     for (byte i=0; i < len; i++) {
       // read 'n' bytes
@@ -372,22 +370,22 @@ boolean verifyImage (HEX_PTR *hexLines)  {
       // verify this byte!
       if (lineaddr % 2) {
         // for 'high' bytes:
-        if (b != (spi_transaction(0x28, addr >> 8, addr, 0) & 0xFF)) {
+        if (b != (spi_transaction(0x28, lineaddr >> 9, lineaddr >> 1, 0) & 0xFF)) {
           Serial.print("verification error at address 0x"); Serial.print(lineaddr, HEX);
           Serial.print(" Should be 0x"); Serial.print(b, HEX); Serial.print(" not 0x");
-          Serial.println((spi_transaction(0x28, addr >> 8, addr, 0) & 0xFF), HEX);
+          Serial.println((spi_transaction(0x28, lineaddr >> 9, lineaddr >> 1, 0) & 0xFF), HEX);
           return false;
         }
       } else {
         // for 'low bytes'
-        if (b != (spi_transaction(0x20, addr >> 8, addr, 0) & 0xFF)) {
+        if (b != (spi_transaction(0x20, lineaddr >> 9, lineaddr >> 1, 0) & 0xFF)) {
           Serial.print("verification error at address 0x"); Serial.print(lineaddr, HEX);
           Serial.print(" Should be 0x"); Serial.print(b, HEX); Serial.print(" not 0x");
-          Serial.println((spi_transaction(0x20, addr >> 8, addr, 0) & 0xFF), HEX);
+          Serial.println((spi_transaction(0x20, lineaddr >> 9, lineaddr >> 1, 0) & 0xFF), HEX);
           return false;
         }
-      } 
-      lineaddr++;  
+      }
+      lineaddr++;
     }
 
     b = pgm_read_byte(&hexLines[lineNum].checksum);  // chxsum
