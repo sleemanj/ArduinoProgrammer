@@ -3,7 +3,11 @@ Standalone-Arduino-AVR-ISP-programmer
 
 A standalone programmer for mass-programming AVR chips.
 
-The original Adafruit version of this project [included as a string](https://github.com/adafruit/Standalone-Arduino-AVR-ISP-programmer/blob/master/images.cpp) the compiled
+This fork uses a preprocessing step to convert the desired compiled sketch
+into a compact C structure thus allowing the programmer to handle much
+larger sketches than the original Adafruit version.
+
+The Adafruit version of this project [included as a string](https://github.com/adafruit/Standalone-Arduino-AVR-ISP-programmer/blob/master/images.cpp) the compiled
 sketch to be programmed into target devices. Each byte of the sketch was
 represented as two characters (hex digits), thus making the string at least
 twice as big as the number of bytes in the compiled sketch it represented.
@@ -13,10 +17,6 @@ this programmer.
 No big deal if the sketch you want the programmer to load is a bootloader,
 since those are small, but the size limitation can be a problem if you wish
 to load something other than a bootloader.
-
-This fork uses a preprocessing step to convert the desired compiled sketch
-into a more compact C structure thus allowing this programmer to handle much
-larger sketches.
 
 Usage
 =====
