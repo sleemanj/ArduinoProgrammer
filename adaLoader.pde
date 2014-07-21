@@ -115,10 +115,6 @@ void loop (void) {
      pageaddr += pagesize;
   }
 
-  // Set fuses to 'final' state
-  if (! programFuses(targetimage->image_normfuses))
-    error("Programming Fuses fail");
-
   end_pmode();
   start_pmode();
 
@@ -127,10 +123,14 @@ void loop (void) {
     error("Failed to verify chip");
   }
 
+  // Set fuses to 'final' state
+  if (! programFuses(targetimage->image_normfuses))
+    error("Programming Fuses fail");
+
   if (! verifyFuses(targetimage->image_normfuses, targetimage->fusemask) ) {
     error("Failed to verify fuses");
   }
-  
+
   target_poweroff();
   tone(PIEZOPIN, 4000, 200);
 }
