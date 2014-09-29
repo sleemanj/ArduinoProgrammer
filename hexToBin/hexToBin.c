@@ -179,15 +179,20 @@ int main(int argc, char *argv[])
   printf("  \"%s\",        // image_name\n", argv[1]);
   printf("  \"atmega328p\",           // image_chipname\n");
   printf("  0x950F,                 // image_chipsig for 328P\n");
-  printf("  {0x3F, 0xFF, 0xDA, 0x05},            // pre program fuses (prot/lock, low, high, ext)\n");
-  printf("  {0x0F, 0x00, 0x00, 0x00},            // post program fuses. These are the\n");
-  printf("                                       // default settings from the adaFruit\n");
-  printf("                                       // project. With these settings, the\n");
-  printf("                                       // target processor may be programmed\n");
-  printf("                                       // through the arduino IDE as a\n");
-  printf("                                       // \"Arduino Pro or Pro Mini (3.3V,\n");
-  printf("                                       // 8MHz) w/ ATmega328\".\n");
-  printf("  {0x3F, 0xFF, 0xFF, 0x07},  // fuse mask\n");
+  
+  printf("  //  FUSE NOTE ! \n")
+  printf("  //  A given fuse byte is only actually changed if the fuse is NON ZERO \n")
+  printf("  //  Notice that the post program fuses (second line) below have 0x00 in the L/H/E\n");
+  printf("  //  So that means the L/H/E settings from the pre program settings will be retained.\n")
+  printf("  //  The lock fuse however will be changed to 0x0F in post program\n")
+  printf("  //  So the actual settings for L/H/E are 0xFF 0xDA 0x05 which in Arduino Land (see boards.txt)\n")
+  printf("  //  is 'Arduino Duemilanove w/ ATmega328' (16Mhz Crystal/Oscillator)\n")
+  printf("  //  the fuse mask is used in verification to remove unused bits from the comparison\n")
+  
+  
+  printf("  {0x3F, 0xFF, 0xDA, 0x05},  // pre program fuses (prot/lock, low, high, ext)\n");
+  printf("  {0x0F, 0x00, 0x00, 0x00},  // post program fuses, 0x00 means 'same as pre program'\n");
+  printf("  {0x3F, 0xFF, 0xFF, 0x07},  // fuse mask, this is used in verifying (I think if you didn't use 0x00 it would not be necessary!)\n");
   printf("  32768,                     // size of chip flash in bytes\n");
   printf("  128,                       // size in bytes of flash page\n");
   printf("  0x%04X,                    // image base address\n", hexData[0].address);
