@@ -9,6 +9,18 @@ HexData upload was never implemented, because it's just too inefficient to store
 
 The best way is to upload your desired code to a target chip normally using a normal programmer, as you would normally, and then connect said target to your new uploader you are making and use the "ripFlashToPagedBinData" method of the library.
 
+## Wiring
+
+| Programmer | Target |
+| ---------- | ------ |
+| MOSI       | MOSI   |
+| MISO       | MISO   |
+| SCK        | SCK   |
+| 10         | RESET   |
+| VCC        | VCC   |
+| GND        | GND   |
+
+
 ## Example Of Ripping
 
     #include <ArduinoProgrammer.h>
