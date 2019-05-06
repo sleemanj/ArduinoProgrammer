@@ -1,56 +1,102 @@
-Standalone-Arduino-AVR-ISP-programmer
+Arduino Programmer Library
 =====================================
 
-A standalone programmer for mass-programming AVR chips.
+Arduino library to facilitate programming another AVR with arbitrary code.
 
-This fork uses a preprocessing step to convert the desired compiled sketch
-into a compact C structure thus allowing the programmer to handle much
-larger sketches than the original Adafruit version.
+I offer no support for this code, I use it in various forms in a private project.
 
-The Adafruit version of this project [included as a string](https://github.com/adafruit/Standalone-Arduino-AVR-ISP-programmer/blob/master/images.cpp) the compiled
-sketch to be programmed into target devices. Each byte of the sketch was
-represented as two characters (hex digits), thus making the string at least
-twice as big as the number of bytes in the compiled sketch it represented.
-This greatly limited the size of the sketches that could be uploaded by
-this programmer.
+HexData upload was never implemented, because it's just too inefficient to store HexData.
 
-No big deal if the sketch you want the programmer to load is a bootloader,
-since those are small, but the size limitation can be a problem if you wish
-to load something other than a bootloader.
+The best way is to upload your desired code to a target chip normally using a normal programmer, as you would normally, and then connect said target to your new uploader you are making and use the "ripFlashToPagedBinData" method of the library.
 
-Usage
-=====
+## Example Of Ripping
 
-1. In the Arduino IDE, go to Tools->Board and select the type of board that
-you will be programming with the standalone programmer. During compilation,
-the IDE uses this setting to define various constants for things like
-processor type and clock speed. If you compile for a board type different
-than the target board, problems can occur at runtime. For example, if you
-compile for a board type of "Arduino UNO", but then load the code
-onto an Arduino Pro running at 8MHz, print statements will not work properly
-because the serial port's settings will be based on the UNO's 16MHz clock.
+    #include <ArduinoProgrammer.h>
+    
+    // Ripping example
+    //  the connected target already has the code you want uploaded (not locked)
+    //  we will rip it and print the code to upload in the Serial console 
+    //  you can then copy and pase it into your programming sketch
+    
+    ArduinoProgrammer MyProgrammer;
 
-2. Compile the sketch you want the programmer to load. The Arduino IDE will
-compile the sketch in a temporary directory, generating a file with a .hex
-extension.
+    void setup()
+    {
+        Serial.begin(57600);
 
-3. Find the hex file. In the Arduino IDE, go to Arduino->Preferences and then
-select "Show verbose output during compilation". During compilation, the path
-to the hex file (and lots of other stuff) will be displayed.
+        // Start programming mode
+        MyProgrammer.begin();
 
-4. Copy the hex file into another directory for safekeeping. The original is
-a temporary file and may be automatically deleted without warning.
+        // Get details of the chip connected to us (the target)
+        ArduinoProgrammer::ChipData TargetChip = MyProgrammer.getStandardChipData();
+        
+        // Rip code
+        uint8_t result = MyProgrammer.ripFlashToPagedBinData(TargetChip, "MyImage");
 
-5. Edit the Makefile in the hexToBin directory of this project, replacing the
-existing hex filename with the name of your hex file.
+        // End programming
+        MyProgrammer.end();
 
-6. From a terminal window, cd to the hexToBin directory and type "make". This
-will generate a hexData.c file in the main project directory. This file
-contains a C struct representing your hex image.
+        // The serial terminal will print out the dump of the target
+        //  copy and paste that into the upload
+    }
 
-7. In the Arduino IDE, go to Tools->Board and select the type of board that
-you will be using as the standalone programmer.
+    void loop() { }
 
-8. Compile and upload to the standalone programmer.
+## Example Of Uploading
 
-9. Your standalone programmer is loaded and ready to go.
+    #include <ArduinoProgrammer.h>
+
+    ArduinoProgrammer MyProgrammer;
+
+
+      // "MyImage" - the data you intend to upload to the chip
+      // --------------------------------------------------------------------------
+      // The below image is genertaed by "ripFlashToPagedBinData" in the ripping 
+      // example, you copy the output from "ripFlashToPagedBinData and paste here.
+      // --------------------------------------------------------------------------
+      // --------------------------------------------------------------------------
+      // --------------------------------------------------------------------------
+
+            const byte MyImagePage000[128] PROGMEM = {
+              0x0c, 0x94, 0x87, 0x00, 0x0c, 0x94, 0xe1, 0x08, 0x0c, 0x94, 0xba, 0x08, 0x0c, 0x94, 0xaf, 0x00, 
+              // ...
+            };
+
+            // ... and a whole crap load of more data not shown in this example....
+
+            ArduinoProgrammer::PagedBinData MyImage = {
+              "ripped",
+              0x0000,
+              128,
+              256,
+            MyImagePages };
+
+      // --------------------------------------------------------------------------
+      // --------------------------------------------------------------------------
+      // --------------------------------------------------------------------------
+
+    void setup()
+    {
+        Serial.begin(57600);
+
+        // Start programming mode
+        MyProgrammer.begin();
+
+        // Get details of the chip connected to us (the target)
+        ArduinoProgrammer::ChipData TargetChip = MyProgrammer.getStandardChipData();
+        
+        // Upload code
+        uint8_t result = MyProgrammer.uploadFromProgmem(TargetChip, MyImage);
+
+        if(result == 0)
+        {
+          // It worked
+          Serial.println("Upload Finished");
+        }  
+        else
+        {
+          Serial.println("Upload Failed");
+        }  
+    }
+          
+    void loop() { }
